@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "arch7"
+version = "0.1.0"
+description = "Architecture diagram generator for Excalidraw — GCP, Confluent, Kong, Dynatrace"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [
+    { name = "Marc Verchiani", email = "flux7art@gmail.com" },
+]
+dependencies = [
+    "fastmcp>=2.0",
+    "grandalf>=0.8",
+    "pydantic>=2.0",
+]
+
+[project.scripts]
+arch7 = "arch7_mcp.server:main"
+
+[tool.setuptools.packages.find]
+include = ["arch7_mcp*"]
