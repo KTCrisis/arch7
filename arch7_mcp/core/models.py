@@ -49,6 +49,7 @@ class ThemeName(str, Enum):
     DEFAULT = "default"
     DARK = "dark"
     COLORFUL = "colorful"
+    PROFESSIONAL = "professional"
 
 
 # ---------------------------------------------------------------------------
@@ -76,11 +77,18 @@ class Edge(BaseModel):
 
 
 class Subgraph(BaseModel):
-    """A named group of nodes rendered as a bounding box."""
+    """A named group of nodes rendered as a bounding box.
+
+    Supports nesting: a subgraph can contain both direct nodes (node_ids)
+    and child subgraphs (child_ids). The renderer resolves bounding boxes
+    from the innermost containers outward.
+    """
 
     id: str
     label: str
     node_ids: list[str] = Field(default_factory=list)
+    child_ids: list[str] = Field(default_factory=list)
+    component_type: str | None = None
 
 
 class DiagramGraph(BaseModel):

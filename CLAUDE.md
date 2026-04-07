@@ -19,8 +19,9 @@ arch7                               # same, via entry point
 arch7_mcp/
 ├── core/
 │   ├── components.py    # 60+ component registry (GCP, Kong, Confluent, Dynatrace, AI...)
+│   ├── icons.py         # 18 tech SVG icons (simple-icons CC0), auto-matched to components
 │   ├── models.py        # Pydantic models, ShapeType (incl. CYLINDER_V, CYLINDER_H)
-│   └── themes.py        # default, dark, colorful
+│   └── themes.py        # default, dark, colorful, professional
 ├── engine/
 │   ├── layout.py        # Sugiyama auto-layout (grandalf), node sizing
 │   └── renderer.py      # Excalidraw JSON builder, cylinder shapes
@@ -51,6 +52,25 @@ Use these for auto-styling — shape + color + badge applied automatically:
 - **AI/Agentic**: `llm`, `agent`, `crewai`, `langchain`, `mcp`, `vector`, `rag`
 - **Monitoring**: `dynatrace`, `opentelemetry`, `prometheus`, `grafana`, `datadog`
 - **Infra**: `nginx`, `haproxy`, `envoy`, `traefik`, `redis`, `cloudflare`, `docker`, `kubernetes`
+
+## Themes
+
+| Theme | Roughness | Font | Style |
+|-------|-----------|------|-------|
+| `default` | 1 (hand-drawn) | Virgil | Excalidraw sketch style |
+| `dark` | 1 | Virgil | Dark background, inverted colors |
+| `colorful` | 1 | Virgil | Bright accent colors |
+| `professional` | 0 (clean) | Helvetica | Clean lines, corporate palette, no hand-drawn effect |
+
+## Technology icons
+
+18 SVG icons auto-matched to components (sourced from [simple-icons](https://simpleicons.org), CC0):
+
+PostgreSQL, MySQL, MongoDB, Redis, Kafka, RabbitMQ, Docker, Kubernetes,
+NGINX, Google Cloud (all GCP services), Prometheus, Grafana, Elasticsearch,
+GraphQL, Python, Datadog, Cassandra, SQLite
+
+Icons appear automatically when a node's `component_type` or label matches a known technology.
 
 ## Shapes
 

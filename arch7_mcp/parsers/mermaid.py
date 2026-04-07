@@ -224,13 +224,22 @@ def parse_mermaid(source: str) -> DiagramGraph:
         if m:
             sg_id = m.group(1) or m.group(3) or _sanitize_id(m.group(4) or "subgraph")
             sg_label = m.group(2) or m.group(4) or m.group(3) or sg_id
-            sg = Subgraph(id=sg_id, label=sg_label.strip())
+            sg_label_clean = sg_label.strip()
+            sg = Subgraph(
+                id=sg_id,
+                label=sg_label_clean,
+                component_type=_detect_subgraph_type(sg_label_clean),
+            )
             subgraph_stack.append(sg)
             continue
 
         if _SUBGRAPH_END.match(line):
             if subgraph_stack:
-                subgraphs.append(subgraph_stack.pop())
+                closed = subgraph_stack.pop()
+                # If there's a parent subgraph on the stack, register as child
+                if subgraph_stack:
+                    subgraph_stack[-1].child_ids.append(closed.id)
+                subgraphs.append(closed)
             continue
 
         # Pass 1: extract node definitions, get cleaned line
@@ -277,3 +286,26 @@ def _add_to_subgraph(node_id: str, subgraph_stack: list[Subgraph]) -> None:
 
 def _sanitize_id(text: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_]", "_", text.strip()).strip("_")[:32]
+
+
+# Cloud / infra keywords auto-detected in subgraph labels for container icons.
+_SUBGRAPH_TYPE_HINTS: list[tuple[str, str]] = [
+    ("gcp", "googlecloud"),
+    ("google cloud", "googlecloud"),
+    ("aws", "amazonaws"),
+    ("amazon", "amazonaws"),
+    ("kubernetes", "kubernetes"),
+    ("k8s", "kubernetes"),
+    ("docker", "docker"),
+    ("kafka", "apachekafka"),
+    ("confluent", "apachekafka"),
+]
+
+
+def _detect_subgraph_type(label: str) -> str | None:
+    """Infer a component_type from a subgraph label."""
+    lower = label.lower()
+    for keyword, comp_type in _SUBGRAPH_TYPE_HINTS:
+        if keyword in lower:
+            return comp_type
+    return None

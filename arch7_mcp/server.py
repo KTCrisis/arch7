@@ -24,6 +24,7 @@ from arch7_mcp.core.models import (
     RemoveConnectionOp,
     RemoveNodeOp,
     ShapeType,
+    Subgraph,
     UpdateNodeOp,
 )
 from arch7_mcp.engine.layout import compute_layout
@@ -53,6 +54,7 @@ def create_diagram(
     output_path: str,
     direction: str = "LR",
     theme: str = "default",
+    subgraphs: list[dict[str, Any]] | None = None,
 ) -> str:
     """Create a new Excalidraw diagram from structured node and connection data.
 
@@ -76,7 +78,17 @@ def create_diagram(
         output_path: File path to save the .excalidraw file (e.g., "./arch.excalidraw")
         direction: Layout direction - "LR" (left-right), "TD" (top-down),
                    "BT" (bottom-up), "RL" (right-left). Default: "LR"
-        theme: Color theme - "default", "dark", "colorful". Default: "default"
+        theme: Color theme - "default", "dark", "colorful", "professional". Default: "default".
+                "professional" uses clean lines (no hand-drawn effect) and Helvetica font.
+        subgraphs: Optional list of groups (supports nesting). Each dict has:
+            - id (str, required): Group identifier
+            - label (str, required): Display label for the container
+            - node_ids (list[str], required): Direct node ids inside this group
+            - child_ids (list[str], optional): IDs of nested child subgroups.
+              Parent containers automatically wrap around their children.
+            - component_type (str, optional): Technology for container icon
+              (e.g., "gke" or "googlecloud" shows a GCP logo top-right).
+              Useful for multi-cloud diagrams.
 
     Returns:
         Summary of the created diagram with file path.
@@ -101,12 +113,27 @@ def create_diagram(
         for c in connections
     ]
 
+    graph_subgraphs = []
+    if subgraphs:
+        for sg in subgraphs:
+            graph_subgraphs.append(
+                Subgraph(
+                    id=sg["id"],
+                    label=sg.get("label", sg["id"]),
+                    node_ids=sg.get("node_ids", []),
+                    child_ids=sg.get("child_ids", []),
+                    component_type=sg.get("component_type"),
+                )
+            )
+
     dir_upper = direction.upper()
     try:
         dir_enum = Direction(dir_upper)
     except ValueError:
         dir_enum = Direction.LEFT_RIGHT
-    graph = DiagramGraph(nodes=graph_nodes, edges=graph_edges, direction=dir_enum)
+    graph = DiagramGraph(
+        nodes=graph_nodes, edges=graph_edges, subgraphs=graph_subgraphs, direction=dir_enum
+    )
 
     layout = compute_layout(graph)
     doc = build_excalidraw_file(layout, theme_name=theme, direction=dir_enum)
@@ -155,7 +182,8 @@ def mermaid_to_excalidraw(
     Args:
         mermaid_syntax: Mermaid flowchart source code.
         output_path: File path to save the .excalidraw file.
-        theme: Color theme - "default", "dark", "colorful". Default: "default"
+        theme: Color theme - "default", "dark", "colorful", "professional". Default: "default".
+                "professional" uses clean lines (no hand-drawn effect) and Helvetica font.
 
     Returns:
         Summary of the converted diagram.

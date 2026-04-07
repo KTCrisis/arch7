@@ -40,6 +40,10 @@ class Theme:
     # Whether to darken component background colors for this theme
     invert_component_colors: bool = False
 
+    # Rendering style
+    roughness: int = 1  # 0 = clean lines, 1 = hand-drawn
+    font_family: int = 1  # 1 = Virgil (hand-drawn), 2 = Helvetica, 3 = Cascadia
+
 
 THEMES: dict[ThemeName, Theme] = {
     ThemeName.DEFAULT: Theme(
@@ -84,6 +88,22 @@ THEMES: dict[ThemeName, Theme] = {
         group_bg="#fff9db",
         group_stroke="#f08c00",
         group_label_color="#e67700",
+    ),
+    ThemeName.PROFESSIONAL: Theme(
+        name=ThemeName.PROFESSIONAL,
+        canvas_background="#ffffff",
+        default_bg="#f0f4f8",
+        default_stroke="#334155",
+        default_text="#1e293b",
+        arrow_stroke="#64748b",
+        arrow_label_color="#475569",
+        badge_bg="#e2e8f0",
+        badge_text="#334155",
+        group_bg="#f8fafc",
+        group_stroke="#94a3b8",
+        group_label_color="#64748b",
+        roughness=0,
+        font_family=2,
     ),
 }
 

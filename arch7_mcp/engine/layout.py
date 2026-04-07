@@ -18,6 +18,7 @@ from grandalf.graphs import Vertex as GVertex
 from grandalf.layouts import SugiyamaLayout
 
 from arch7_mcp.core.components import DEFAULT_STYLE as _DEFAULT_STYLE, detect_component
+from arch7_mcp.core.icons import has_icon
 from arch7_mcp.core.models import (
     DiagramGraph,
     Direction,
@@ -41,6 +42,8 @@ PADDING_V = 20.0
 BADGE_HEIGHT = 18.0
 MIN_NODE_WIDTH = 140.0
 MIN_NODE_HEIGHT = 55.0
+ICON_SIZE = 28.0
+ICON_GAP = 6.0
 
 # Layer gap adapts to edge label content, clamped to this range.
 # MIN keeps unlabeled edges readable; MAX prevents verbose labels from
@@ -99,7 +102,7 @@ def _diamond_border_offset(pos: float, center: float, half_w: float, half_h: flo
 
 
 def _estimate_node_size(node: Node) -> tuple[float, float]:
-    """Estimate width and height based on label text and badge presence."""
+    """Estimate width and height based on label text, badge, and icon presence."""
     style = detect_component(node.label, node.component_type)
     has_badge = bool(style.badge)
 
@@ -112,6 +115,10 @@ def _estimate_node_size(node: Node) -> tuple[float, float]:
         badge_text_width = len(style.badge) * CHAR_WIDTH + 16
         text_width = max(text_width, badge_text_width)
         text_height += BADGE_HEIGHT
+
+    # Icon adds width (placed left of label)
+    if has_icon(node.label, node.component_type):
+        text_width += ICON_SIZE + ICON_GAP
 
     width = max(text_width, MIN_NODE_WIDTH)
     height = max(text_height, MIN_NODE_HEIGHT)
