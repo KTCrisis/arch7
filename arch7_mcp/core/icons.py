@@ -278,6 +278,7 @@ _COMPONENT_TO_ICON: dict[str, str] = {
     "grafana": "grafana",
     "graphql": "graphql",
     "k8s": "kubernetes",
+    "apache kafka": "apachekafka",
     "kafka": "apachekafka",
     "kubernetes": "kubernetes",
     "mariadb": "mysql",
@@ -386,13 +387,20 @@ def _resolve_slug(label: str, component_type: str | None = None) -> str | None:
         key = component_type.lower().strip()
         if key in _COMPONENT_TO_ICON:
             return _COMPONENT_TO_ICON[key]
-    # Try label tokens
-    for token in label.lower().split():
+    label_lower = label.lower()
+    # Try full label first (e.g. "apache kafka" before token "apache")
+    if label_lower in _COMPONENT_TO_ICON:
+        return _COMPONENT_TO_ICON[label_lower]
+    # Try label tokens, longest first to prefer "kafka" over "go" in "category"
+    tokens = label_lower.split()
+    for token in sorted(tokens, key=len, reverse=True):
         if token in _COMPONENT_TO_ICON:
             return _COMPONENT_TO_ICON[token]
-    # Substring match
-    label_lower = label.lower()
-    for key, slug in _COMPONENT_TO_ICON.items():
+    # Substring match, longest key first to prefer specific matches
+    # Skip short keys (<=3 chars) to avoid false positives like "go" in "governance"
+    for key, slug in sorted(_COMPONENT_TO_ICON.items(), key=lambda x: len(x[0]), reverse=True):
+        if len(key) <= 3:
+            continue
         if key in label_lower:
             return slug
     return None
