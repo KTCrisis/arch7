@@ -137,7 +137,7 @@ _register(
     badge="Queue",
     background_color="#fff4e6",
     stroke_color="#e8590c",
-    shape=ShapeType.RECTANGLE,
+    shape=ShapeType.CYLINDER_H,
 )
 _register(
     "nats",
@@ -145,7 +145,7 @@ _register(
     badge="Queue",
     background_color="#ffe3e3",
     stroke_color="#c92a2a",
-    shape=ShapeType.RECTANGLE,
+    shape=ShapeType.CYLINDER_H,
 )
 _register(
     "pulsar",

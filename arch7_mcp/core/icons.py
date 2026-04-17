@@ -8,8 +8,11 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import re
 
 from arch7_mcp.core.components import detect_component
+
+_TOKEN_SPLIT = re.compile(r"[^a-z0-9]+")
 
 
 # ---------------------------------------------------------------------------
@@ -382,27 +385,26 @@ def _build_svg(slug: str) -> str | None:
 
 
 def _resolve_slug(label: str, component_type: str | None = None) -> str | None:
-    """Find the icon slug for a component by type or label."""
+    """Find the icon slug for a component by type or label.
+
+    Matching is strict to avoid false positives like "kafkaesque" → kafka:
+      1. explicit component_type exact match
+      2. full normalised label exact match
+      3. token match, where tokens are split on any non-alphanumeric char
+         (whitespace, hyphen, underscore, dot, slash)
+    No loose substring fallback.
+    """
     if component_type:
         key = component_type.lower().strip()
         if key in _COMPONENT_TO_ICON:
             return _COMPONENT_TO_ICON[key]
-    label_lower = label.lower()
-    # Try full label first (e.g. "apache kafka" before token "apache")
+    label_lower = label.lower().strip()
     if label_lower in _COMPONENT_TO_ICON:
         return _COMPONENT_TO_ICON[label_lower]
-    # Try label tokens, longest first to prefer "kafka" over "go" in "category"
-    tokens = label_lower.split()
+    tokens = [t for t in _TOKEN_SPLIT.split(label_lower) if len(t) >= 4]
     for token in sorted(tokens, key=len, reverse=True):
         if token in _COMPONENT_TO_ICON:
             return _COMPONENT_TO_ICON[token]
-    # Substring match, longest key first to prefer specific matches
-    # Skip short keys (<=3 chars) to avoid false positives like "go" in "governance"
-    for key, slug in sorted(_COMPONENT_TO_ICON.items(), key=lambda x: len(x[0]), reverse=True):
-        if len(key) <= 3:
-            continue
-        if key in label_lower:
-            return slug
     return None
 
 

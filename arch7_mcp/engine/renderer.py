@@ -387,6 +387,10 @@ def _make_shape(
         bg_color = darken_hex(style.background_color, 0.55)
         st_color = style.stroke_color
 
+    if node.color:
+        bg_color = node.color
+        st_color = darken_hex(node.color, 0.55)
+
     resolved_shape = style.shape if style != DEFAULT_STYLE else node.shape
     is_cylinder = resolved_shape in (ShapeType.CYLINDER_V, ShapeType.CYLINDER_H)
 
@@ -549,6 +553,16 @@ def _make_shape(
         icon_el["fileId"] = file_id
         icon_el["scale"] = [1, 1]
         extra_elements.append(icon_el)
+
+    if node.planned:
+        if not is_cylinder:
+            shape_el["opacity"] = 60
+            if shape_el.get("type") in ("rectangle", "ellipse", "diamond"):
+                shape_el["strokeStyle"] = "dashed"
+        for el in extra_elements:
+            el["opacity"] = 60
+            if el.get("type") in ("rectangle", "ellipse", "diamond", "line"):
+                el["strokeStyle"] = "dashed"
 
     return shape_el, extra_elements
 
@@ -1016,6 +1030,8 @@ def _build_metadata(layout: LayoutResult, direction: Direction) -> DiagramMetada
             node_id=pn.node.id,
             label=pn.node.label,
             component_type=pn.node.component_type,
+            color=pn.node.color,
+            planned=pn.node.planned,
             element_ids=[],
         )
 

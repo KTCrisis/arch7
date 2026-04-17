@@ -105,6 +105,8 @@ def _metadata_to_graph(meta: DiagramMetadata) -> DiagramGraph:
             id=nm.node_id,
             label=nm.label,
             component_type=nm.component_type,
+            color=nm.color,
+            planned=nm.planned,
         )
         for nm in meta.nodes.values()
     ]
@@ -173,6 +175,8 @@ def _apply_add_node(meta: DiagramMetadata, op: AddNodeOp) -> None:
         node_id=op.id,
         label=op.label,
         component_type=op.component_type,
+        color=op.color,
+        planned=op.planned,
     )
 
 
@@ -189,6 +193,10 @@ def _apply_update_node(meta: DiagramMetadata, op: UpdateNodeOp) -> None:
         nm.label = op.label
     if op.component_type is not None:
         nm.component_type = op.component_type
+    if op.color is not None:
+        nm.color = op.color or None
+    if op.planned is not None:
+        nm.planned = op.planned
 
 
 def _apply_add_connection(meta: DiagramMetadata, op: AddConnectionOp) -> None:

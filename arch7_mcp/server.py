@@ -16,16 +16,21 @@ from arch7_mcp.core.models import (
     AddConnectionOp,
     AddNodeOp,
     DiagramGraph,
-    Direction,
     Edge,
-    EdgeStyle,
     ModifyOperation,
     Node,
     RemoveConnectionOp,
     RemoveNodeOp,
-    ShapeType,
     Subgraph,
     UpdateNodeOp,
+)
+from arch7_mcp.core.validation import (
+    DiagramInputError,
+    filter_orphan_connections,
+    parse_direction,
+    parse_edge_style,
+    parse_shape_type,
+    validate_node_ids,
 )
 from arch7_mcp.engine.layout import compute_layout
 from arch7_mcp.engine.renderer import build_excalidraw_file, save_excalidraw
@@ -70,6 +75,10 @@ def create_diagram(
               If omitted, the label is used for auto-detection.
             - shape (str, optional): Override shape - "rectangle", "diamond",
               "ellipse", "circle", "stadium", "parallelogram"
+            - color (str, optional): Hex color (e.g. "#6366f1") to override the
+              auto-detected background fill. Stroke is darkened automatically.
+            - planned (bool, optional): If true, render as a planned/future
+              element (dashed stroke + 60% opacity). Default: false.
         connections: List of connections. Each dict has:
             - from_id (str, required): Source node id
             - to_id (str, required): Target node id
@@ -93,24 +102,36 @@ def create_diagram(
     Returns:
         Summary of the created diagram with file path.
     """
+    warnings: list[str] = []
+
+    try:
+        validate_node_ids(nodes)
+    except DiagramInputError as e:
+        return f"Error: {e}"
+
     graph_nodes = [
         Node(
             id=n["id"],
             label=n.get("label", n["id"]),
-            shape=ShapeType(n["shape"]) if "shape" in n else ShapeType.RECTANGLE,
+            shape=parse_shape_type(n.get("shape"), warnings, context=f"node[{i}]"),
             component_type=n.get("component_type"),
+            color=n.get("color"),
+            planned=n.get("planned", False),
         )
-        for n in nodes
+        for i, n in enumerate(nodes)
     ]
+
+    node_id_set = {n["id"] for n in nodes}
+    connections = filter_orphan_connections(connections, node_id_set, warnings)
 
     graph_edges = [
         Edge(
             from_id=c["from_id"],
             to_id=c["to_id"],
             label=c.get("label"),
-            style=EdgeStyle(c["style"]) if "style" in c else EdgeStyle.SOLID,
+            style=parse_edge_style(c.get("style"), warnings, context=f"connection[{i}]"),
         )
-        for c in connections
+        for i, c in enumerate(connections)
     ]
 
     graph_subgraphs = []
@@ -126,11 +147,7 @@ def create_diagram(
                 )
             )
 
-    dir_upper = direction.upper()
-    try:
-        dir_enum = Direction(dir_upper)
-    except ValueError:
-        dir_enum = Direction.LEFT_RIGHT
+    dir_enum = parse_direction(direction, warnings)
     graph = DiagramGraph(
         nodes=graph_nodes, edges=graph_edges, subgraphs=graph_subgraphs, direction=dir_enum
     )
@@ -147,12 +164,17 @@ def create_diagram(
         else:
             comp_summary.append(f'  - {n.id}: "{n.label}"')
 
+    warn_block = ""
+    if warnings:
+        warn_block = "Warnings:\n" + "\n".join(f"  - {w}" for w in warnings) + "\n\n"
+
     return (
         f"Created diagram at: {path}\n"
         f"Nodes ({len(graph_nodes)}):\n" + "\n".join(comp_summary) + "\n"
         f"Connections: {len(graph_edges)}\n"
         f"Direction: {dir_enum.value}\n"
         f"Theme: {theme}\n\n"
+        f"{warn_block}"
         f"Open with the VS Code Excalidraw extension or drag into excalidraw.com"
     )
 
@@ -234,6 +256,8 @@ def modify_diagram(
               - label (str): Display text
               - component_type (str, optional): Technology for auto-styling
               - shape (str, optional): Shape override
+              - color (str, optional): Hex color override
+              - planned (bool, optional): Mark as planned/future (dashed + 60% opacity)
               - near (str, optional): Place near this existing node id
 
             For remove_node:
@@ -243,6 +267,8 @@ def modify_diagram(
               - id (str): Node to update
               - label (str, optional): New label
               - component_type (str, optional): New component type
+              - color (str, optional): New hex color (pass empty string to clear)
+              - planned (bool, optional): Toggle planned state
 
             For add_connection:
               - from_id (str): Source node id
@@ -258,21 +284,25 @@ def modify_diagram(
     Returns:
         Summary of applied modifications.
     """
+    warnings: list[str] = []
     parsed_ops: list[ModifyOperation] = []
-    for op_dict in operations:
+    for i, op_dict in enumerate(operations):
         op_type = op_dict.get("op", "")
         match op_type:
             case "add_node":
+                nid = op_dict.get("id")
+                if not isinstance(nid, str) or not nid.strip() or " " in nid:
+                    return f"Error: op[{i}] add_node: id must be a non-empty whitespace-free string"
                 parsed_ops.append(
                     AddNodeOp(
-                        id=op_dict["id"],
-                        label=op_dict.get("label", op_dict["id"]),
+                        id=nid,
+                        label=op_dict.get("label", nid),
                         component_type=op_dict.get("component_type"),
-                        shape=(
-                            ShapeType(op_dict["shape"])
-                            if "shape" in op_dict
-                            else ShapeType.RECTANGLE
+                        shape=parse_shape_type(
+                            op_dict.get("shape"), warnings, context=f"op[{i}]"
                         ),
+                        color=op_dict.get("color"),
+                        planned=op_dict.get("planned", False),
                         near=op_dict.get("near"),
                     )
                 )
@@ -284,6 +314,8 @@ def modify_diagram(
                         id=op_dict["id"],
                         label=op_dict.get("label"),
                         component_type=op_dict.get("component_type"),
+                        color=op_dict.get("color"),
+                        planned=op_dict.get("planned"),
                     )
                 )
             case "add_connection":
@@ -304,7 +336,10 @@ def modify_diagram(
             case _:
                 return f"Error: Unknown operation type '{op_type}'"
 
-    return apply_modifications(file_path, parsed_ops, theme=theme)
+    result = apply_modifications(file_path, parsed_ops, theme=theme)
+    if warnings:
+        result += "\n\nWarnings:\n" + "\n".join(f"  - {w}" for w in warnings)
+    return result
 
 
 # ---------------------------------------------------------------------------

@@ -64,6 +64,8 @@ class Node(BaseModel):
     label: str
     shape: ShapeType = ShapeType.RECTANGLE
     component_type: str | None = None
+    color: str | None = None
+    planned: bool = False
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -155,6 +157,8 @@ class NodeMetadata(BaseModel):
     node_id: str
     label: str
     component_type: str | None = None
+    color: str | None = None
+    planned: bool = False
     element_ids: list[str] = Field(default_factory=list)
 
 
@@ -193,6 +197,8 @@ class AddNodeOp(BaseModel):
     label: str
     component_type: str | None = None
     shape: ShapeType = ShapeType.RECTANGLE
+    color: str | None = None
+    planned: bool = False
     near: str | None = None
 
 
@@ -210,6 +216,8 @@ class UpdateNodeOp(BaseModel):
     id: str
     label: str | None = None
     component_type: str | None = None
+    color: str | None = None
+    planned: bool | None = None
 
 
 class AddConnectionOp(BaseModel):
