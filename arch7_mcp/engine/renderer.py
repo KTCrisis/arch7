@@ -273,91 +273,77 @@ def _make_cylinder_h(
     stroke_color: str, group_id: str,
     roughness: int = 1,
 ) -> list[dict[str, Any]]:
-    """Build a horizontal cylinder (topic/queue) from lines + ellipse.
+    """Build a horizontal cylinder (topic/queue) that fits exactly in (x,y,w,h).
 
-    Same as vertical but rotated — cap on the right side.
+    Geometry:
+      - Left face: full ellipse (width = cap_w) showing the visible disk
+      - Top/bottom: straight horizontal segments between the two caps
+      - Right back edge: rightward-bulging arc line
+    The whole shape is contained in the bounding rectangle, so arrow bindings
+    on the shape_el reach the silhouette cleanly.
     """
     elements: list[dict[str, Any]] = []
-    cap_w = min(w * 0.2, 14)  # ellipse cap width
+    cap_w = max(min(w * 0.18, h * 0.5), 16)  # proportional foreshortening
 
-    # Body
-    body = _base_element("line", x, y, w - cap_w / 2, h,
-                         stroke_color=stroke_color, roughness=roughness)
-    body["groupIds"] = [group_id]
-    body["roundness"] = {"type": 2}
-    body["points"] = [
-        [0, 0],
-        [w - cap_w, 0],
-        [w - cap_w / 2, 0],
-        [w, h * 0.15],
-        [w + cap_w * 0.1, h * 0.5],
-        [w, h * 0.85],
-        [w - cap_w / 2, h],
-        [w - cap_w, h],
-        [0, h],
-        [-cap_w * 0.3, h],
-        [-cap_w * 0.7, h * 0.85],
-        [-cap_w * 0.85, h * 0.5],
-        [-cap_w * 0.7, h * 0.15],
-        [-cap_w * 0.3, 0],
-        [0, 0],
-    ]
-    body["lastCommittedPoint"] = None
-    body["startBinding"] = None
-    body["endBinding"] = None
-    body["startArrowhead"] = None
-    body["endArrowhead"] = None
-    body.pop("type", None)
-    body["type"] = "line"
-    elements.append(body)
+    seam_x_left = x + cap_w / 2  # top of left ellipse (rightmost point at top edge)
+    seam_x_right = x + w - cap_w / 2  # where right back-arc begins
 
-    # Band line 1
-    band1_x = x + (w - cap_w) * 0.35
-    band1 = _base_element("line", band1_x, y, cap_w * 0.6, h,
-                          stroke_color=stroke_color, stroke_width=1, roughness=roughness)
-    band1["groupIds"] = [group_id]
-    band1["roundness"] = {"type": 2}
-    band1["points"] = [
-        [0, 0],
-        [cap_w * 0.4, h * 0.15],
-        [cap_w * 0.6, h * 0.5],
-        [cap_w * 0.4, h * 0.85],
-        [0, h],
-    ]
-    band1["lastCommittedPoint"] = None
-    band1["startBinding"] = None
-    band1["endBinding"] = None
-    band1["startArrowhead"] = None
-    band1["endArrowhead"] = None
-    band1.pop("type", None)
-    band1["type"] = "line"
-    elements.append(band1)
+    # Top horizontal seam
+    top = _base_element(
+        "line", seam_x_left, y, seam_x_right - seam_x_left, 1,
+        stroke_color=stroke_color, roughness=roughness,
+    )
+    top["groupIds"] = [group_id]
+    top["roundness"] = None
+    top["points"] = [[0, 0], [seam_x_right - seam_x_left, 0]]
+    top["lastCommittedPoint"] = None
+    top["startBinding"] = None
+    top["endBinding"] = None
+    top["startArrowhead"] = None
+    top["endArrowhead"] = None
+    elements.append(top)
 
-    # Band line 2
-    band2_x = x + (w - cap_w) * 0.55
-    band2 = _base_element("line", band2_x, y, cap_w * 0.5, h,
-                          stroke_color=stroke_color, stroke_width=1, roughness=roughness)
-    band2["groupIds"] = [group_id]
-    band2["roundness"] = {"type": 2}
-    band2["points"] = [
+    # Bottom horizontal seam
+    bottom = _base_element(
+        "line", seam_x_left, y + h, seam_x_right - seam_x_left, 1,
+        stroke_color=stroke_color, roughness=roughness,
+    )
+    bottom["groupIds"] = [group_id]
+    bottom["roundness"] = None
+    bottom["points"] = [[0, 0], [seam_x_right - seam_x_left, 0]]
+    bottom["lastCommittedPoint"] = None
+    bottom["startBinding"] = None
+    bottom["endBinding"] = None
+    bottom["startArrowhead"] = None
+    bottom["endArrowhead"] = None
+    elements.append(bottom)
+
+    # Right back-edge arc (rightward-bulging curve, stays inside the bbox)
+    arc = _base_element(
+        "line", seam_x_right, y, cap_w / 2, h,
+        stroke_color=stroke_color, roughness=roughness,
+    )
+    arc["groupIds"] = [group_id]
+    arc["roundness"] = {"type": 2}
+    arc["points"] = [
         [0, 0],
-        [cap_w * 0.35, h * 0.15],
+        [cap_w * 0.35, h * 0.25],
         [cap_w * 0.5, h * 0.5],
-        [cap_w * 0.35, h * 0.85],
+        [cap_w * 0.35, h * 0.75],
         [0, h],
     ]
-    band2["lastCommittedPoint"] = None
-    band2["startBinding"] = None
-    band2["endBinding"] = None
-    band2["startArrowhead"] = None
-    band2["endArrowhead"] = None
-    band2.pop("type", None)
-    band2["type"] = "line"
-    elements.append(band2)
+    arc["lastCommittedPoint"] = None
+    arc["startBinding"] = None
+    arc["endBinding"] = None
+    arc["startArrowhead"] = None
+    arc["endArrowhead"] = None
+    elements.append(arc)
 
-    # Left ellipse cap
-    cap = _base_element("ellipse", x - cap_w / 2, y, cap_w, h,
-                        stroke_color=stroke_color, roughness=roughness)
+    # Left face — full ellipse, centered on the seam
+    cap = _base_element(
+        "ellipse", x, y, cap_w, h,
+        stroke_color=stroke_color, roughness=roughness,
+    )
     cap["groupIds"] = [group_id]
     cap["roundness"] = None
     elements.append(cap)
